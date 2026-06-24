@@ -1,65 +1,367 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+type Student = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  department: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const studentSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Enter a valid email address"),
+  phone: z.string().optional(),
+  department: z.string().optional(),
+});
+
+type StudentFormValues = z.infer<typeof studentSchema>;
+
+const defaultValues: StudentFormValues = {
+  name: "",
+  email: "",
+  phone: "",
+  department: "",
+};
 
 export default function Home() {
+  const apiUrl = useMemo(
+    () => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
+    [],
+  );
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+
+  const form = useForm<StudentFormValues>({
+    resolver: zodResolver(studentSchema),
+    defaultValues,
+  });
+
+  const fetchStudents = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${apiUrl}/students`);
+
+      if (!response.ok) {
+        throw new Error("Could not fetch students");
+      }
+
+      const data = (await response.json()) as Student[];
+      setStudents(data);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not fetch students",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiUrl]);
+
+  useEffect(() => {
+    void fetchStudents();
+  }, [fetchStudents]);
+
+  const openCreateDialog = () => {
+    setEditingStudent(null);
+    form.reset(defaultValues);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (student: Student) => {
+    setEditingStudent(student);
+    form.reset({
+      name: student.name,
+      email: student.email,
+      phone: student.phone ?? "",
+      department: student.department ?? "",
+    });
+    setDialogOpen(true);
+  };
+
+  const onSubmit = async (values: StudentFormValues) => {
+    setIsSaving(true);
+
+    const payload = {
+      ...values,
+      phone: values.phone || undefined,
+      department: values.department || undefined,
+    };
+
+    try {
+      const endpoint = editingStudent
+        ? `${apiUrl}/students/${editingStudent.id}`
+        : `${apiUrl}/students`;
+      const method = editingStudent ? "PATCH" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message ?? "Could not save student");
+      }
+
+      toast.success(
+        editingStudent
+          ? "Student updated successfully"
+          : "Student created successfully",
+      );
+      setDialogOpen(false);
+      await fetchStudents();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not save student",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const deleteStudent = async (student: Student) => {
+    const shouldDelete = window.confirm(
+      `Delete ${student.name} from the student list?`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/students/${student.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not delete student");
+      }
+
+      toast.success("Student deleted successfully");
+      await fetchStudents();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not delete student",
+      );
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 sm:px-6 lg:px-8">
+      <section className="mx-auto flex max-w-6xl flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-500">
+              Book Library Management System
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Students CRUD
+            </h1>
+          </div>
+
+          <Button onClick={openCreateDialog}>
+            <Plus className="h-4 w-4" />
+            Create Student
+          </Button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="overflow-hidden rounded-lg border bg-white">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead className="w-36 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-28 text-center">
+                    <span className="inline-flex items-center gap-2 text-sm text-slate-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading students
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ) : students.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="h-28 text-center text-sm text-slate-500"
+                  >
+                    No students found. Create the first one.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                students.map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell className="font-medium">
+                      {student.name}
+                    </TableCell>
+                    <TableCell>{student.email}</TableCell>
+                    <TableCell>{student.phone || "-"}</TableCell>
+                    <TableCell>{student.department || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => openEditDialog(student)}
+                          aria-label={`Edit ${student.name}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => deleteStudent(student)}
+                          aria-label={`Delete ${student.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingStudent ? "Edit student" : "Create student"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingStudent
+                ? "Update the student details."
+                : "Add a new student to the library system."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ayesha Rahman" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ayesha@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+8801712345678" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Computer Science" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {editingStudent ? "Update" : "Create"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </main>
   );
 }
