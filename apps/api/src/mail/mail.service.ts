@@ -27,10 +27,11 @@ export class MailService {
     const html = await this.renderTemplate('student-created.hbs', {
       student,
     });
+    const recipient = student.email || process.env.MAIL_TO;
 
     await this.transporter.sendMail({
       from: process.env.MAIL_FROM,
-      to: process.env.MAIL_TO,
+      to: recipient,
       subject: `Student created: ${student.name}`,
       html,
     });
