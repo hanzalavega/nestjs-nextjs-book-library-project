@@ -1,0 +1,23 @@
+{
+  "name": "nestnext-student-crud",
+  "private": true,
+  "packageManager": "npm@10.9.4",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:api": "turbo dev --filter=api",
+    "dev:web": "turbo dev --filter=web",
+    "build": "turbo build",
+    "build:api": "turbo build --filter=api",
+    "build:web": "turbo build --filter=web",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.8.4",
+    "turbo": "^2.9.18"
+  }
+}
