@@ -4,19 +4,27 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
+import { MailService } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
 import { UpdateStudentDto } from './dto/update-student.dto.js';
 
 @Injectable()
 export class StudentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   async create(createStudentDto: CreateStudentDto) {
     try {
-      return await this.prisma.student.create({
+      const student = await this.prisma.student.create({
         data: createStudentDto,
       });
+
+      await this.mailService.sendStudentCreatedEmail(student);
+
+      return student;
     } catch (error) {
       this.handlePrismaError(error);
     }

@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <body>
+    <h2>New student created</h2>
+    <p>A new student was added to the Book Library Management System.</p>
+
+    <ul>
+      <li><strong>Name:</strong> {{student.name}}</li>
+      <li><strong>Email:</strong> {{student.email}}</li>
+      {{#if student.department}}
+        <li><strong>Department:</strong> {{student.department}}</li>
+      {{/if}}
+    </ul>
+  </body>
+</html>
