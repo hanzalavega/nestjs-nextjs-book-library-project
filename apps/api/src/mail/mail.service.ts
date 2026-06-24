@@ -24,6 +24,10 @@ export class MailService {
   });
 
   async sendStudentCreatedEmail(student: StudentCreatedEmailData) {
+    if (process.env.MAIL_ENABLED !== 'true') {
+      return;
+    }
+
     const html = await this.renderTemplate('student-created.hbs', {
       student,
     });
