@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -39,6 +40,8 @@ type Student = {
   email: string;
   phone: string | null;
   department: string | null;
+  photoUrl: string | null;
+  photoPublicId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -69,6 +72,7 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
 
   const form = useForm<StudentFormValues>({
     resolver: zodResolver(studentSchema),
@@ -97,17 +101,21 @@ export default function Home() {
   }, [apiUrl]);
 
   useEffect(() => {
-    void fetchStudents();
+    queueMicrotask(() => {
+      void fetchStudents();
+    });
   }, [fetchStudents]);
 
   const openCreateDialog = () => {
     setEditingStudent(null);
+    setSelectedPhoto(null);
     form.reset(defaultValues);
     setDialogOpen(true);
   };
 
   const openEditDialog = (student: Student) => {
     setEditingStudent(student);
+    setSelectedPhoto(null);
     form.reset({
       name: student.name,
       email: student.email,
@@ -120,11 +128,21 @@ export default function Home() {
   const onSubmit = async (values: StudentFormValues) => {
     setIsSaving(true);
 
-    const payload = {
-      ...values,
-      phone: values.phone || undefined,
-      department: values.department || undefined,
-    };
+    const formData = new FormData();
+    formData.append("name", values.name);
+    formData.append("email", values.email);
+
+    if (values.phone) {
+      formData.append("phone", values.phone);
+    }
+
+    if (values.department) {
+      formData.append("department", values.department);
+    }
+
+    if (selectedPhoto) {
+      formData.append("photo", selectedPhoto);
+    }
 
     try {
       const endpoint = editingStudent
@@ -134,10 +152,7 @@ export default function Home() {
 
       const response = await fetch(endpoint, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -151,6 +166,7 @@ export default function Home() {
           : "Student created successfully",
       );
       setDialogOpen(false);
+      setSelectedPhoto(null);
       await fetchStudents();
     } catch (error) {
       toast.error(
@@ -211,6 +227,7 @@ export default function Home() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-20">Photo</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
@@ -221,7 +238,7 @@ export default function Home() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-28 text-center">
+                  <TableCell colSpan={6} className="h-28 text-center">
                     <span className="inline-flex items-center gap-2 text-sm text-slate-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading students
@@ -231,7 +248,7 @@ export default function Home() {
               ) : students.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="h-28 text-center text-sm text-slate-500"
                   >
                     No students found. Create the first one.
@@ -240,6 +257,21 @@ export default function Home() {
               ) : (
                 students.map((student) => (
                   <TableRow key={student.id}>
+                    <TableCell>
+                      {student.photoUrl ? (
+                        <Image
+                          src={student.photoUrl}
+                          alt={student.name}
+                          width={48}
+                          height={48}
+                          className="h-12 w-12 rounded-md object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-slate-100 text-xs font-medium text-slate-500">
+                          N/A
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {student.name}
                     </TableCell>
@@ -274,7 +306,16 @@ export default function Home() {
         </div>
       </section>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+
+          if (!open) {
+            setSelectedPhoto(null);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -344,6 +385,27 @@ export default function Home() {
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-2">
+                <FormLabel htmlFor="photo">Photo</FormLabel>
+                {editingStudent?.photoUrl && !selectedPhoto ? (
+                  <Image
+                    src={editingStudent.photoUrl}
+                    alt={editingStudent.name}
+                    width={80}
+                    height={80}
+                    className="h-20 w-20 rounded-md object-cover"
+                  />
+                ) : null}
+                <Input
+                  id="photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    setSelectedPhoto(event.target.files?.[0] ?? null);
+                  }}
+                />
+              </div>
 
               <DialogFooter>
                 <Button
