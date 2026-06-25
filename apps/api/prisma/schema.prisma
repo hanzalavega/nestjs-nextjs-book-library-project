@@ -20,10 +20,12 @@ model Student {
 }
 
 model Author {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String?  @unique
-  bio       String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  name          String
+  email         String?  @unique
+  bio           String?
+  photoUrl      String?
+  photoPublicId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

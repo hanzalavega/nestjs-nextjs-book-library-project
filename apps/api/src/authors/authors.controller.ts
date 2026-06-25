@@ -7,7 +7,10 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -29,8 +32,12 @@ export class AuthorsController {
   @ApiOperation({ summary: 'Create an author' })
   @ApiCreatedResponse({ description: 'Author created successfully' })
   @ApiConflictResponse({ description: 'Email already exists' })
-  create(@Body() createAuthorDto: CreateAuthorDto) {
-    return this.authorsService.create(createAuthorDto);
+  @UseInterceptors(FileInterceptor('photo'))
+  create(
+    @Body() createAuthorDto: CreateAuthorDto,
+    @UploadedFile() photo?: Express.Multer.File,
+  ) {
+    return this.authorsService.create(createAuthorDto, photo);
   }
 
   @Get()
@@ -53,11 +60,13 @@ export class AuthorsController {
   @ApiOkResponse({ description: 'Author updated successfully' })
   @ApiConflictResponse({ description: 'Email already exists' })
   @ApiNotFoundResponse({ description: 'Author not found' })
+  @UseInterceptors(FileInterceptor('photo'))
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateAuthorDto: UpdateAuthorDto,
+    @UploadedFile() photo?: Express.Multer.File,
   ) {
-    return this.authorsService.update(id, updateAuthorDto);
+    return this.authorsService.update(id, updateAuthorDto, photo);
   }
 
   @Delete(':id')
