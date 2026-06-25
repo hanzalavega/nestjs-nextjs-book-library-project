@@ -35,63 +35,66 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type Author = {
+type Student = {
   id: number;
   name: string;
-  email: string | null;
-  bio: string | null;
+  email: string;
+  phone: string | null;
+  department: string | null;
   photoUrl: string | null;
   photoPublicId: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
-const authorSchema = z.object({
+const studentSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.email("Enter a valid email address").optional().or(z.literal("")),
-  bio: z.string().optional(),
+  email: z.string().email("Enter a valid email address"),
+  phone: z.string().optional(),
+  department: z.string().optional(),
 });
 
-type AuthorFormValues = z.infer<typeof authorSchema>;
+type StudentFormValues = z.infer<typeof studentSchema>;
 
-const defaultValues: AuthorFormValues = {
+const defaultValues: StudentFormValues = {
   name: "",
   email: "",
-  bio: "",
+  phone: "",
+  department: "",
 };
 
-export default function AuthorsPage() {
+export default function Home() {
   const apiUrl = useMemo(
     () => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
     [],
   );
-  const [authors, setAuthors] = useState<Author[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingAuthor, setEditingAuthor] = useState<Author | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
 
-  const form = useForm<AuthorFormValues>({
-    resolver: zodResolver(authorSchema),
+  const form = useForm<StudentFormValues>({
+    resolver: zodResolver(studentSchema),
     defaultValues,
   });
 
-  const fetchAuthors = useCallback(async () => {
+  const fetchStudents = useCallback(async () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${apiUrl}/authors`);
+      const response = await fetch(`${apiUrl}/students`);
 
       if (!response.ok) {
-        throw new Error("Could not fetch authors");
+        throw new Error("Could not fetch students");
       }
 
-      const data = (await response.json()) as Author[];
-      setAuthors(data);
+      const data = (await response.json()) as Student[];
+      setStudents(data);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Could not fetch authors",
+        error instanceof Error ? error.message : "Could not fetch students",
       );
     } finally {
       setIsLoading(false);
@@ -100,40 +103,42 @@ export default function AuthorsPage() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      void fetchAuthors();
+      void fetchStudents();
     });
-  }, [fetchAuthors]);
+  }, [fetchStudents]);
 
   const openCreateDialog = () => {
-    setEditingAuthor(null);
+    setEditingStudent(null);
     setSelectedPhoto(null);
     form.reset(defaultValues);
     setDialogOpen(true);
   };
 
-  const openEditDialog = (author: Author) => {
-    setEditingAuthor(author);
+  const openEditDialog = (student: Student) => {
+    setEditingStudent(student);
     setSelectedPhoto(null);
     form.reset({
-      name: author.name,
-      email: author.email ?? "",
-      bio: author.bio ?? "",
+      name: student.name,
+      email: student.email,
+      phone: student.phone ?? "",
+      department: student.department ?? "",
     });
     setDialogOpen(true);
   };
 
-  const onSubmit = async (values: AuthorFormValues) => {
+  const onSubmit = async (values: StudentFormValues) => {
     setIsSaving(true);
 
     const formData = new FormData();
     formData.append("name", values.name);
+    formData.append("email", values.email);
 
-    if (values.email) {
-      formData.append("email", values.email);
+    if (values.phone) {
+      formData.append("phone", values.phone);
     }
 
-    if (values.bio) {
-      formData.append("bio", values.bio);
+    if (values.department) {
+      formData.append("department", values.department);
     }
 
     if (selectedPhoto) {
@@ -141,10 +146,10 @@ export default function AuthorsPage() {
     }
 
     try {
-      const endpoint = editingAuthor
-        ? `${apiUrl}/authors/${editingAuthor.id}`
-        : `${apiUrl}/authors`;
-      const method = editingAuthor ? "PATCH" : "POST";
+      const endpoint = editingStudent
+        ? `${apiUrl}/students/${editingStudent.id}`
+        : `${apiUrl}/students`;
+      const method = editingStudent ? "PATCH" : "POST";
 
       const response = await fetch(endpoint, {
         method,
@@ -153,47 +158,49 @@ export default function AuthorsPage() {
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.message ?? "Could not save author");
+        throw new Error(errorBody?.message ?? "Could not save student");
       }
 
       toast.success(
-        editingAuthor
-          ? "Author updated successfully"
-          : "Author created successfully",
+        editingStudent
+          ? "Student updated successfully"
+          : "Student created successfully",
       );
       setDialogOpen(false);
       setSelectedPhoto(null);
-      await fetchAuthors();
+      await fetchStudents();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Could not save author",
+        error instanceof Error ? error.message : "Could not save student",
       );
     } finally {
       setIsSaving(false);
     }
   };
 
-  const deleteAuthor = async (author: Author) => {
-    const shouldDelete = window.confirm(`Delete ${author.name}?`);
+  const deleteStudent = async (student: Student) => {
+    const shouldDelete = window.confirm(
+      `Delete ${student.name} from the student list?`,
+    );
 
     if (!shouldDelete) {
       return;
     }
 
     try {
-      const response = await fetch(`${apiUrl}/authors/${author.id}`, {
+      const response = await fetch(`${apiUrl}/students/${student.id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error("Could not delete author");
+        throw new Error("Could not delete student");
       }
 
-      toast.success("Author deleted successfully");
-      await fetchAuthors();
+      toast.success("Student deleted successfully");
+      await fetchStudents();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Could not delete author",
+        error instanceof Error ? error.message : "Could not delete student",
       );
     }
   };
@@ -206,12 +213,14 @@ export default function AuthorsPage() {
             <p className="text-sm font-medium text-slate-500">
               Book Library Management System
             </p>
-            <h1 className="text-3xl font-semibold tracking-tight">Authors</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Students CRUD
+            </h1>
           </div>
 
           <Button onClick={openCreateDialog}>
             <Plus className="h-4 w-4" />
-            Create Author
+            Create Student
           </Button>
         </div>
 
@@ -222,37 +231,38 @@ export default function AuthorsPage() {
                 <TableHead className="w-20">Photo</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Bio</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead className="w-48 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-28 text-center">
+                  <TableCell colSpan={6} className="h-28 text-center">
                     <span className="inline-flex items-center gap-2 text-sm text-slate-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading authors
+                      Loading students
                     </span>
                   </TableCell>
                 </TableRow>
-              ) : authors.length === 0 ? (
+              ) : students.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="h-28 text-center text-sm text-slate-500"
                   >
-                    No authors found. Create the first one.
+                    No students found. Create the first one.
                   </TableCell>
                 </TableRow>
               ) : (
-                authors.map((author) => (
-                  <TableRow key={author.id}>
+                students.map((student) => (
+                  <TableRow key={student.id}>
                     <TableCell>
-                      {author.photoUrl ? (
+                      {student.photoUrl ? (
                         <Image
-                          src={author.photoUrl}
-                          alt={author.name}
+                          src={student.photoUrl}
+                          alt={student.name}
                           width={48}
                           height={48}
                           className="h-12 w-12 rounded-md object-cover"
@@ -263,17 +273,18 @@ export default function AuthorsPage() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="font-medium">{author.name}</TableCell>
-                    <TableCell>{author.email || "-"}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {author.bio || "-"}
+                    <TableCell className="font-medium">
+                      {student.name}
                     </TableCell>
+                    <TableCell>{student.email}</TableCell>
+                    <TableCell>{student.phone || "-"}</TableCell>
+                    <TableCell>{student.department || "-"}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="icon" asChild>
                           <Link
-                            href={`/authors/${author.id}`}
-                            aria-label={`View ${author.name}`}
+                            href={`/students/${student.id}`}
+                            aria-label={`View ${student.name}`}
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
@@ -281,16 +292,16 @@ export default function AuthorsPage() {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => openEditDialog(author)}
-                          aria-label={`Edit ${author.name}`}
+                          onClick={() => openEditDialog(student)}
+                          aria-label={`Edit ${student.name}`}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="destructive"
                           size="icon"
-                          onClick={() => deleteAuthor(author)}
-                          aria-label={`Delete ${author.name}`}
+                          onClick={() => deleteStudent(student)}
+                          aria-label={`Delete ${student.name}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -317,12 +328,12 @@ export default function AuthorsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingAuthor ? "Edit author" : "Create author"}
+              {editingStudent ? "Edit student" : "Create student"}
             </DialogTitle>
             <DialogDescription>
-              {editingAuthor
-                ? "Update the author details."
-                : "Add a new author to the library system."}
+              {editingStudent
+                ? "Update the student details."
+                : "Add a new student to the library system."}
             </DialogDescription>
           </DialogHeader>
 
@@ -335,7 +346,7 @@ export default function AuthorsPage() {
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Humayun Ahmed" {...field} />
+                      <Input placeholder="Ayesha Rahman" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -349,7 +360,7 @@ export default function AuthorsPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="humayun@example.com" {...field} />
+                      <Input placeholder="ayesha@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -358,15 +369,26 @@ export default function AuthorsPage() {
 
               <FormField
                 control={form.control}
-                name="bio"
+                name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bio</FormLabel>
+                    <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Bangladeshi novelist and filmmaker"
-                        {...field}
-                      />
+                      <Input placeholder="+8801712345678" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Computer Science" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -374,18 +396,18 @@ export default function AuthorsPage() {
               />
 
               <div className="space-y-2">
-                <FormLabel htmlFor="author-photo">Photo</FormLabel>
-                {editingAuthor?.photoUrl && !selectedPhoto ? (
+                <FormLabel htmlFor="photo">Photo</FormLabel>
+                {editingStudent?.photoUrl && !selectedPhoto ? (
                   <Image
-                    src={editingAuthor.photoUrl}
-                    alt={editingAuthor.name}
+                    src={editingStudent.photoUrl}
+                    alt={editingStudent.name}
                     width={80}
                     height={80}
                     className="h-20 w-20 rounded-md object-cover"
                   />
                 ) : null}
                 <Input
-                  id="author-photo"
+                  id="photo"
                   type="file"
                   accept="image/*"
                   onChange={(event) => {
@@ -404,7 +426,7 @@ export default function AuthorsPage() {
                 </Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {editingAuthor ? "Update" : "Create"}
+                  {editingStudent ? "Update" : "Create"}
                 </Button>
               </DialogFooter>
             </form>
