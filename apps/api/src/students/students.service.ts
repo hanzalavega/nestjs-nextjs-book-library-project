@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
+import { CloudinaryService } from '../cloudinary/cloudinary.service.js';
 import { MailService } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
@@ -14,12 +15,21 @@ export class StudentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  async create(createStudentDto: CreateStudentDto) {
+  async create(
+    createStudentDto: CreateStudentDto,
+    photo?: Express.Multer.File,
+  ) {
     try {
+      const photoData = await this.getPhotoData(photo);
+
       const student = await this.prisma.student.create({
-        data: createStudentDto,
+        data: {
+          ...createStudentDto,
+          ...photoData,
+        },
       });
 
       await this.mailService.sendStudentCreatedEmail(student);
@@ -48,13 +58,22 @@ export class StudentsService {
     return student;
   }
 
-  async update(id: number, updateStudentDto: UpdateStudentDto) {
+  async update(
+    id: number,
+    updateStudentDto: UpdateStudentDto,
+    photo?: Express.Multer.File,
+  ) {
     await this.findOne(id);
 
     try {
+      const photoData = await this.getPhotoData(photo);
+
       return await this.prisma.student.update({
         where: { id },
-        data: updateStudentDto,
+        data: {
+          ...updateStudentDto,
+          ...photoData,
+        },
       });
     } catch (error) {
       this.handlePrismaError(error);
@@ -80,5 +99,18 @@ export class StudentsService {
     }
 
     throw error;
+  }
+
+  private async getPhotoData(photo?: Express.Multer.File) {
+    if (!photo) {
+      return {};
+    }
+
+    const uploadedPhoto = await this.cloudinaryService.uploadImage(photo);
+
+    return {
+      photoUrl: uploadedPhoto.secureUrl,
+      photoPublicId: uploadedPhoto.publicId,
+    };
   }
 }

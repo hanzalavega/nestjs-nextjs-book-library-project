@@ -7,7 +7,10 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -19,6 +22,7 @@ import {
 import { CreateStudentDto } from './dto/create-student.dto.js';
 import { UpdateStudentDto } from './dto/update-student.dto.js';
 import { StudentsService } from './students.service.js';
+import type {} from 'multer';
 
 @ApiTags('Students')
 @Controller('students')
@@ -29,8 +33,12 @@ export class StudentsController {
   @ApiOperation({ summary: 'Create a student' })
   @ApiCreatedResponse({ description: 'Student created successfully' })
   @ApiConflictResponse({ description: 'Email already exists' })
-  create(@Body() createStudentDto: CreateStudentDto) {
-    return this.studentsService.create(createStudentDto);
+  @UseInterceptors(FileInterceptor('photo'))
+  create(
+    @Body() createStudentDto: CreateStudentDto,
+    @UploadedFile() photo?: Express.Multer.File,
+  ) {
+    return this.studentsService.create(createStudentDto, photo);
   }
 
   @Get()
@@ -53,11 +61,13 @@ export class StudentsController {
   @ApiOkResponse({ description: 'Student updated successfully' })
   @ApiConflictResponse({ description: 'Email already exists' })
   @ApiNotFoundResponse({ description: 'Student not found' })
+  @UseInterceptors(FileInterceptor('photo'))
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateStudentDto: UpdateStudentDto,
+    @UploadedFile() photo?: Express.Multer.File,
   ) {
-    return this.studentsService.update(id, updateStudentDto);
+    return this.studentsService.update(id, updateStudentDto, photo);
   }
 
   @Delete(':id')
