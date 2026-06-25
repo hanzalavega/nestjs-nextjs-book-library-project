@@ -28,8 +28,6 @@ export class MailService {
       return;
     }
 
-    return;
-
     const html = await this.renderTemplate('student-created.hbs', {
       student,
     });
