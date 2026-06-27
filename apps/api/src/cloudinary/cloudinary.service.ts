@@ -20,6 +20,10 @@ export class CloudinaryService {
     };
   }
 
+  async deleteImage(publicId: string) {
+    await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+  }
+
   private uploadFromBuffer(file: Express.Multer.File) {
     return new Promise<UploadApiResponse>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -29,7 +33,11 @@ export class CloudinaryService {
         },
         (error, result) => {
           if (error || !result) {
-            reject(error ?? new Error('Cloudinary upload failed'));
+            reject(
+              error instanceof Error
+                ? error
+                : new Error(error?.message ?? 'Cloudinary upload failed'),
+            );
             return;
           }
 

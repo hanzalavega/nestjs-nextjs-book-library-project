@@ -17,6 +17,7 @@ model Student {
   photoPublicId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  borrows       Borrow[]
 }
 
 model Author {
@@ -28,6 +29,7 @@ model Author {
   photoPublicId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  books         Book[]
 }
 
 model Category {
@@ -37,4 +39,40 @@ model Category {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  books       Book[]
+}
+
+model Book {
+  id                Int      @id @default(autoincrement())
+  title             String
+  isbn              String?  @unique
+  description       String?
+  coverUrl          String?
+  coverPublicId     String?
+  quantity          Int      @default(1)
+  availableQuantity Int      @default(1)
+  authorId          Int
+  categoryId        Int
+  author             Author   @relation(fields: [authorId], references: [id])
+  category           Category @relation(fields: [categoryId], references: [id])
+  borrows            Borrow[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([categoryId])
+}
+
+model Borrow {
+  id         Int      @id @default(autoincrement())
+  studentId  Int
+  bookId     Int
+  borrowedAt DateTime @default(now())
+  dueAt      DateTime?
+  returnedAt DateTime?
+  student    Student  @relation(fields: [studentId], references: [id])
+  book       Book     @relation(fields: [bookId], references: [id])
+
+  @@index([studentId])
+  @@index([bookId])
 }

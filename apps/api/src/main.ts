@@ -18,7 +18,7 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Book Library Management API')
-    .setDescription('Minimal Students CRUD module for a library project')
+    .setDescription('Students, books, categories, authors, and borrowing API')
     .setVersion('1.0')
     .build();
 
