@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { BorrowsService } from './borrows.service.js';
 import { CreateBorrowDto } from './dto/create-borrow.dto.js';
@@ -17,5 +25,11 @@ export class BorrowsController {
   @Get()
   findAll() {
     return this.borrows.findAll();
+  }
+
+  @Patch(':id/return')
+  @ApiOperation({ summary: 'Return a borrowed book and restore its stock' })
+  returnBook(@Param('id', ParseIntPipe) id: number) {
+    return this.borrows.returnBook(id);
   }
 }

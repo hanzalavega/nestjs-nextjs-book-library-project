@@ -49,6 +49,16 @@ export class StudentsService {
   async findOne(id: number) {
     const student = await this.prisma.student.findUnique({
       where: { id },
+      include: {
+        borrows: {
+          include: {
+            book: {
+              include: { author: true, category: true },
+            },
+          },
+          orderBy: { borrowedAt: 'desc' },
+        },
+      },
     });
 
     if (!student) {

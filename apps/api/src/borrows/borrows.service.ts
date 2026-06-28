@@ -55,4 +55,40 @@ export class BorrowsService {
       orderBy: { borrowedAt: 'desc' },
     });
   }
+
+  async returnBook(id: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const borrow = await tx.borrow.findUnique({ where: { id } });
+      if (!borrow) {
+        throw new NotFoundException(
+          `Borrow record with id ${id} was not found`,
+        );
+      }
+      if (borrow.returnedAt) {
+        throw new BadRequestException('This book has already been returned');
+      }
+
+      const returnedAt = new Date();
+      const claimed = await tx.borrow.updateMany({
+        where: { id, returnedAt: null },
+        data: { returnedAt },
+      });
+      if (claimed.count === 0) {
+        throw new BadRequestException('This book has already been returned');
+      }
+
+      await tx.book.update({
+        where: { id: borrow.bookId },
+        data: { availableQuantity: { increment: 1 } },
+      });
+
+      return tx.borrow.findUnique({
+        where: { id },
+        include: {
+          student: true,
+          book: { include: { author: true, category: true } },
+        },
+      });
+    });
+  }
 }
